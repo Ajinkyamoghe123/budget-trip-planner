@@ -5,8 +5,9 @@ import { UserInput, TravelPlan, Source } from "../types";
 export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const prompt = `You are "Chalo AI", a modern, trend-aware Indian travel consultant. 
-  Your goal is to search the live web for the most accurate and recent information for this trip:
+  const prompt = `You are "Chalo AI", a pro-grade Indian travel concierge.
+  
+  TASK: Create a REAL, bookable itinerary for:
   From: ${input.fromCity}
   To: ${input.toCity}
   Persona: ${input.tripType}
@@ -14,14 +15,17 @@ export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> 
   Duration: ${input.duration} days
   Interests: ${input.interests.join(", ")}
 
-  IMPORTANT:
-  1. Use Google Search to find REAL current train/bus prices and popular hostels/hotels.
-  2. For low budgets (5k-15k), prioritize sleeper trains, state volvos, and shared dorms.
-  3. For mid budgets (15k-40k), suggest 3AC/flights and private rooms.
-  4. Ensure the cost breakdown adds up exactly to the total budget provided.
-  5. Provide "Real India" hacks (e.g., Rapido, local mess prices).
-  
-  Format your response as a STRICT JSON object.`;
+  STRICT ACCURACY & INSIDER KNOWLEDGE:
+  1. SEARCH: Find top-rated, specific hostels/hotels in ${input.toCity}.
+  2. BOOKING: Provide real booking URLs (e.g., Zostel, Booking.com).
+  3. LOGISTICS: Find real train/bus numbers and current fare estimates.
+  4. INSIDER WISDOM: Provide 4-6 categorized tips. DO NOT give generic advice like "stay hydrated". Instead, give specific hacks:
+     - Which specific local app to use (e.g., "Use Rapido for cheaper bikes in ${input.toCity}").
+     - A specific hidden food stall name.
+     - A specific cultural "must-do" that tourists miss.
+     - A budget hack specific to this route.
+
+  Format as STRICT JSON.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -49,12 +53,26 @@ export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> 
           accommodation: {
             type: Type.OBJECT,
             properties: {
-              type: { type: Type.STRING },
               area: { type: Type.STRING },
-              avgNightlyRate: { type: Type.NUMBER },
-              benefits: { type: Type.ARRAY, items: { type: Type.STRING } }
+              whyThisArea: { type: Type.STRING },
+              options: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    type: { type: Type.STRING },
+                    price: { type: Type.NUMBER },
+                    rating: { type: Type.NUMBER },
+                    reviewCount: { type: Type.STRING },
+                    highlight: { type: Type.STRING },
+                    bookingUrl: { type: Type.STRING }
+                  },
+                  required: ["name", "type", "price", "rating", "reviewCount", "highlight"]
+                }
+              }
             },
-            required: ["type", "area", "avgNightlyRate", "benefits"]
+            required: ["area", "whyThisArea", "options"]
           },
           suggestedPlaces: { type: Type.ARRAY, items: { type: Type.STRING } },
           itinerary: {
@@ -81,7 +99,17 @@ export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> 
             },
             required: ["travel", "stay", "food", "activities", "total"]
           },
-          localTips: { type: Type.ARRAY, items: { type: Type.STRING } }
+          localTips: { 
+            type: Type.ARRAY, 
+            items: { 
+              type: Type.OBJECT,
+              properties: {
+                category: { type: Type.STRING },
+                text: { type: Type.STRING }
+              },
+              required: ["category", "text"]
+            } 
+          }
         },
         required: ["summary", "travelOptions", "accommodation", "suggestedPlaces", "itinerary", "costBreakdown", "localTips"]
       }
@@ -93,13 +121,11 @@ export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> 
   
   let plan: TravelPlan = JSON.parse(text);
 
-  // Extract grounding sources
   const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
   if (groundingChunks) {
     const sources: Source[] = [];
     groundingChunks.forEach((chunk: any) => {
       if (chunk.web && chunk.web.uri) {
-        // Avoid duplicate URIs
         if (!sources.find(s => s.uri === chunk.web.uri)) {
           sources.push({
             title: chunk.web.title || "Travel Source",

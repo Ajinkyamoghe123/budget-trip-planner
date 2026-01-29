@@ -27,16 +27,25 @@ export interface UserInput {
 
 export interface TravelOption {
   mode: string;
-  type: string; // e.g., "Sleeper Train", "3AC", "Volvo Bus"
+  type: string;
   estimatedCost: number;
   description: string;
 }
 
+export interface StayOption {
+  name: string;
+  type: string; 
+  price: number;
+  rating: number; 
+  reviewCount: string;
+  highlight: string;
+  bookingUrl?: string;
+}
+
 export interface Accommodation {
-  type: string;
   area: string;
-  avgNightlyRate: number;
-  benefits: string[];
+  whyThisArea: string;
+  options: StayOption[];
 }
 
 export interface DayItinerary {
@@ -59,13 +68,18 @@ export interface Source {
   uri: string;
 }
 
+export interface LocalTip {
+  category: string; // e.g., "Culture Hack", "Safety", "Foodie Secret"
+  text: string;
+}
+
 export interface TravelPlan {
   travelOptions: TravelOption[];
   accommodation: Accommodation;
   suggestedPlaces: string[];
   itinerary: DayItinerary[];
   costBreakdown: CostBreakdown;
-  localTips: string[];
+  localTips: LocalTip[]; // Updated to structured objects
   summary: string;
   sources?: Source[];
 }
