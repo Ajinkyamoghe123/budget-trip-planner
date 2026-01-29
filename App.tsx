@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserInput, TravelPlan } from './types';
 import { generateTravelPlan } from './services/geminiService';
 import InputForm from './components/InputForm';
@@ -10,12 +10,26 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<TravelPlan | null>(null);
 
+  // Load saved plan on startup
+  useEffect(() => {
+    const savedPlan = localStorage.getItem('last_chalo_plan');
+    if (savedPlan) {
+      try {
+        setPlan(JSON.parse(savedPlan));
+      } catch (e) {
+        localStorage.removeItem('last_chalo_plan');
+      }
+    }
+  }, []);
+
   const handleFormSubmit = async (data: UserInput) => {
     setIsLoading(true);
     setError(null);
     try {
       const result = await generateTravelPlan(data);
       setPlan(result);
+      // Save to local storage
+      localStorage.setItem('last_chalo_plan', JSON.stringify(result));
     } catch (err: any) {
       console.error(err);
       setError("We hit a roadblock. Let's try that again.");
@@ -25,8 +39,11 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
-    setPlan(null);
-    setError(null);
+    if (window.confirm("Start a new search? Your current plan will be cleared.")) {
+      setPlan(null);
+      setError(null);
+      localStorage.removeItem('last_chalo_plan');
+    }
   };
 
   return (
@@ -98,7 +115,7 @@ const App: React.FC = () => {
              </div>
              <div>
                 <h2 className="text-2xl font-black text-slate-900 mb-2">Finding your perfect rasta...</h2>
-                <p className="text-slate-400 font-medium">Checking train availability and local hostel vibes.</p>
+                <p className="text-slate-400 font-medium">Checking live prices and verified sources.</p>
              </div>
           </div>
         )}
@@ -108,10 +125,10 @@ const App: React.FC = () => {
             <div className="text-4xl mb-4">🛑</div>
             <p className="text-rose-600 font-bold text-lg mb-6">{error}</p>
             <button 
-              onClick={handleReset}
+              onClick={() => setError(null)}
               className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
             >
-              LET'S REBOOT
+              TRY AGAIN
             </button>
           </div>
         )}
