@@ -5,27 +5,23 @@ import { UserInput, TravelPlan, Source } from "../types";
 export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const prompt = `You are "Chalo AI", a pro-grade Indian travel concierge.
+  const prompt = `You are "Chalo AI", the ultimate Indian travel buddy. You don't give boring tourist advice; you give the "real deal" (the jugaad).
   
-  TASK: Create a REAL, bookable itinerary for:
+  CONTEXT:
   From: ${input.fromCity}
   To: ${input.toCity}
-  Persona: ${input.tripType}
-  Budget: ₹${input.budget}
+  Vibe: ${input.tripType} (Family/Solo/Friends etc.)
+  Budget: ₹${input.budget} total
   Duration: ${input.duration} days
   Interests: ${input.interests.join(", ")}
 
-  STRICT ACCURACY & INSIDER KNOWLEDGE:
-  1. SEARCH: Find top-rated, specific hostels/hotels in ${input.toCity}.
-  2. BOOKING: Provide real booking URLs (e.g., Zostel, Booking.com).
-  3. LOGISTICS: Find real train/bus numbers and current fare estimates.
-  4. INSIDER WISDOM: Provide 4-6 categorized tips. DO NOT give generic advice like "stay hydrated". Instead, give specific hacks:
-     - Which specific local app to use (e.g., "Use Rapido for cheaper bikes in ${input.toCity}").
-     - A specific hidden food stall name.
-     - A specific cultural "must-do" that tourists miss.
-     - A budget hack specific to this route.
+  YOUR MISSION:
+  1. ACCOMMODATION: Find 2-3 specific, high-vibe stays (Hostels like Zostel, Boutique homestays, or iconic hotels). Provide real names and estimated prices.
+  2. ITINERARY: Create a soulful day-by-day plan. Include "hidden gems" (e.g., a specific sunset point, a famous local bakery, or a secret trail).
+  3. TRANSPORT: Suggest the best way to travel (e.g., "Take the sleeper bus for the experience" or "Book a pre-paid taxi from the stand to avoid overpaying").
+  4. PRO JUGAAD (Insider Tips): Give 4-6 specific tips. Examples: "Use Namma Yatri app here," "Avoid the main market on Sundays," "This specific cafe has the best Maggi," "Bargain starting at 40%."
 
-  Format as STRICT JSON.`;
+  Be soulful, expert, and hyper-local. Format as STRICT JSON.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
