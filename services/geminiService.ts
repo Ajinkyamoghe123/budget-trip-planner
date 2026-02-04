@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserInput, TravelPlan, Source } from "../types";
 
