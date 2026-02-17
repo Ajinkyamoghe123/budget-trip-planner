@@ -14,8 +14,10 @@ Prerequisites: Node.js 18+
 2. Configure environment in `.env`:
    - `GEMINI_API_KEY=your_server_side_gemini_key`
      or `VITE_GEMINI_API_KEY=...` (temporary compatibility)
-   - `VITE_BACKEND_URL=http://localhost:8787`
-   - `VITE_FEEDBACK_WEBHOOK_URL=your_feedback_webhook_url` (optional)
+   - `VITE_BACKEND_URL=http://localhost:8787` (optional for local only)
+   - `VITE_GOOGLE_FORM_ACTION_URL=https://docs.google.com/forms/d/e/<FORM_ID>/formResponse` (optional)
+   - `VITE_GOOGLE_FORM_RATING_ENTRY_ID=<RATING_ENTRY_ID>` (optional)
+   - `VITE_GOOGLE_FORM_FEEDBACK_ENTRY_ID=<FEEDBACK_ENTRY_ID>` (optional)
    - `VITE_ANALYTICS_WEBHOOK_URL=your_analytics_webhook_url` (optional)
 3. Start backend proxy (terminal 1):
    `npm run dev:server`
@@ -26,87 +28,38 @@ Prerequisites: Node.js 18+
 
 - Gemini calls are proxied through `server/index.mjs` so API keys stay server-side.
 - Frontend sends only trip input to `/api/generate-plan`.
-- Feedback and analytics are sent as lightweight webhook events (`sendBeacon` + `fetch` fallback).
+- Feedback is submitted directly to Google Form using `POST + no-cors`.
+- Analytics events are sent to webhook (`sendBeacon` + `fetch` fallback).
 
-## Google Sheets Integration (Feedback + Analytics)
+## Feedback with Google Form
 
-Recommended setup: Google Apps Script Web App.
+Use your form response endpoint:
 
-### 1) Create Google Sheet tabs
+1. `VITE_GOOGLE_FORM_ACTION_URL=https://docs.google.com/forms/d/e/<FORM_ID>/formResponse`
+2. `VITE_GOOGLE_FORM_RATING_ENTRY_ID=<RATING_ENTRY_ID>`
+3. `VITE_GOOGLE_FORM_FEEDBACK_ENTRY_ID=<FEEDBACK_ENTRY_ID>`
 
-Create two tabs:
+Current app expects:
+- rating (1-5 stars)
+- feedback comment (text)
 
-1. `feedback` with headers:
-   - `timestamp`
-   - `feedback`
-   - `reason`
-   - `destination`
-   - `duration`
-   - `app`
+## Optional: Google Sheets Analytics via Apps Script
 
-2. `events` with headers:
-   - `timestamp`
-   - `event`
-   - `destination`
-   - `duration`
-   - `tripType`
-   - `travelers`
-   - `app`
-
-### 2) Create Apps Script
-
-Open Extensions -> Apps Script and paste:
-
-```javascript
-function doPost(e) {
-  const payload = JSON.parse(e.postData.contents || '{}');
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  if (payload.feedback) {
-    const feedbackSheet = ss.getSheetByName('feedback');
-    feedbackSheet.appendRow([
-      payload.timestamp || new Date().toISOString(),
-      payload.feedback || '',
-      payload.reason || '',
-      payload.destination || '',
-      payload.duration || '',
-      payload.app || 'chalo'
-    ]);
-  } else if (payload.event) {
-    const eventSheet = ss.getSheetByName('events');
-    eventSheet.appendRow([
-      payload.timestamp || new Date().toISOString(),
-      payload.event || '',
-      payload.destination || '',
-      payload.duration || '',
-      payload.tripType || '',
-      payload.travelers || '',
-      payload.app || 'chalo'
-    ]);
-  }
-
-  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON); 
-}
-```
-
-### 3) Deploy Web App
-
-1. Deploy -> New deployment
-2. Type: Web app
-3. Execute as: Me
-4. Who has access: Anyone
-5. Copy the Web App URL
-
-Set one or both:
-
-`VITE_FEEDBACK_WEBHOOK_URL=https://script.google.com/macros/s/.../exec`
-`VITE_ANALYTICS_WEBHOOK_URL=https://script.google.com/macros/s/.../exec`
-
-You can also use the same URL for both variables.
+If you want tracking events in Sheets, configure `VITE_ANALYTICS_WEBHOOK_URL` with an Apps Script Web App URL.
 
 ## Notes
 
-- Feedback supports thumbs up/down and optional reason chips for negative feedback.
+- Feedback uses direct Google Form submission with `mode: "no-cors"`.
 - Itinerary generation adds guardrails for incomplete AI output (day count, fallback data, URL normalization).
 - Keep `GEMINI_API_KEY` only on the server, never in `VITE_*` variables.
+
+## Deploy On Vercel
+
+1. Add environment variable:
+   - `GEMINI_API_KEY=your_server_side_gemini_key`
+2. Do not set `VITE_BACKEND_URL` to localhost on Vercel.
+3. Redeploy after adding env vars.
+
+Expected production API path:
+- Frontend calls same-origin `POST /api/generate-plan`
+- Vercel serves it from `api/generate-plan.ts`

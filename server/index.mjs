@@ -145,9 +145,6 @@ const server = http.createServer(async (req, res) => {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
       });
 
       const responseText = response.text;

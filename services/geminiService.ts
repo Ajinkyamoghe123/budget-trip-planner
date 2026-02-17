@@ -1,6 +1,26 @@
 import { UserInput, TravelPlan, Source } from "../types";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL?.trim() || "";
+const RAW_API_BASE_URL = import.meta.env.VITE_BACKEND_URL?.trim() || "";
+
+const normalizeApiBaseUrl = (value: string): string => value.replace(/\/+$/, "");
+
+const isLocalhostUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value);
+    return ["localhost", "127.0.0.1", "0.0.0.0"].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const getPreferredApiBaseUrl = (): string => {
+  if (!RAW_API_BASE_URL) return "";
+
+  // In production, ignore localhost targets because they break deployed clients.
+  if (import.meta.env.PROD && isLocalhostUrl(RAW_API_BASE_URL)) return "";
+
+  return normalizeApiBaseUrl(RAW_API_BASE_URL);
+};
 
 const extractJsonBlock = (text: string): string => {
   const fencedMatch =
@@ -230,24 +250,44 @@ interface GenerationResponse {
   responseText?: string;
   sources?: Source[];
   error?: string;
+  details?: string;
 }
 
 const callGenerationApi = async (input: UserInput): Promise<GenerationResponse> => {
-  const endpoint = `${API_BASE_URL}/api/generate-plan`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const preferredBaseUrl = getPreferredApiBaseUrl();
+  const candidateEndpoints = [
+    preferredBaseUrl ? `${preferredBaseUrl}/api/generate-plan` : "",
+    "/api/generate-plan",
+  ].filter(Boolean);
+  const uniqueEndpoints = [...new Set(candidateEndpoints)];
 
-  const payload = await response.json().catch(() => ({}));
+  let lastError: unknown;
 
-  if (!response.ok) {
-    const msg = payload?.error || "Unable to generate itinerary at the moment.";
-    throw new Error(msg);
+  for (const endpoint of uniqueEndpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const msg = payload?.error || "Unable to generate itinerary at the moment.";
+        const details = payload?.details ? ` (${payload.details})` : "";
+        throw new Error(`${msg}${details}`);
+      }
+
+      return payload;
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  return payload;
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Unable to generate itinerary at the moment.");
 };
 
 export const generateTravelPlan = async (input: UserInput): Promise<TravelPlan> => {
