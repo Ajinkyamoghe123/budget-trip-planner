@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { TravelPlan } from '../types';
-import { submitFeedback, FeedbackType, FeedbackReason, isFeedbackEnabled } from '../services/feedbackService';
+import { submitFeedback, isFeedbackEnabled } from '../services/feedbackService';
 import { trackEvent } from '../services/analyticsService';
 
 interface PlanDisplayProps {
@@ -11,8 +11,9 @@ interface PlanDisplayProps {
 
 const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
   const [feedbackState, setFeedbackState] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackType | null>(null);
-  const [selectedReason, setSelectedReason] = useState<FeedbackReason | null>(null);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
   const [expandedDays, setExpandedDays] = useState<number[]>([1]);
 
   useEffect(() => {
@@ -50,21 +51,17 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
   //   }
   // };
 
-  const sendFeedback = async (feedback: FeedbackType, reason?: FeedbackReason) => {
+  const handleFeedbackSubmit = async () => {
     if (feedbackState === 'submitting' || feedbackState === 'submitted') return;
+    if (rating < 1 || rating > 5) return;
 
-    setSelectedFeedback(feedback);
     setFeedbackState('submitting');
 
     try {
-      await submitFeedback(feedback, {
-        destination: plan?.accommodation?.area,
-        duration: (plan?.itinerary || []).length,
-        reason,
-      });
+      await submitFeedback(rating, feedbackText);
       void trackEvent('feedback_submitted', {
-        feedback,
-        reason: reason || '',
+        rating,
+        hasComment: feedbackText.trim().length > 0,
         destination: plan?.accommodation?.area || '',
       });
       setFeedbackState('submitted');
@@ -72,21 +69,6 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
       console.error("Feedback submission failed:", error);
       setFeedbackState('error');
     }
-  };
-
-  const handlePositiveFeedback = async () => {
-    setSelectedReason(null);
-    await sendFeedback('thumbs_up');
-  };
-
-  const handleNegativeFeedbackClick = () => {
-    if (feedbackState === 'submitted') return;
-    setSelectedFeedback('thumbs_down');
-    setFeedbackState('idle');
-  };
-
-  const handleSubmitNegativeFeedback = async () => {
-    await sendFeedback('thumbs_down', selectedReason || "other");
   };
 
   const toggleDay = (dayNumber: number) => {
@@ -327,73 +309,66 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
 
       <section className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm text-center md:text-left">
         <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Did you like this app?</h3>
-        <p className="text-slate-500 font-medium mt-2">Your quick feedback helps us improve the planner.</p>
-
-        <div className="mt-6 flex flex-col sm:flex-row gap-4">
-          <button
-            type="button"
-            onClick={handlePositiveFeedback}
-            disabled={!isFeedbackEnabled || feedbackState === 'submitting' || feedbackState === 'submitted'}
-            className={`px-6 py-3 rounded-2xl border font-bold transition-all ${
-              selectedFeedback === 'thumbs_up'
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-            } ${feedbackState === 'submitted' ? 'opacity-80' : ''}`}
-          >
-            👍 Thumbs Up
-          </button>
-          <button
-            type="button"
-            onClick={handleNegativeFeedbackClick}
-            disabled={!isFeedbackEnabled || feedbackState === 'submitting' || feedbackState === 'submitted'}
-            className={`px-6 py-3 rounded-2xl border font-bold transition-all ${
-              selectedFeedback === 'thumbs_down'
-                ? 'border-rose-500 bg-rose-50 text-rose-700'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-            } ${feedbackState === 'submitted' ? 'opacity-80' : ''}`}
-          >
-            👎 Thumbs Down
-          </button>
-        </div>
+        <p className="text-slate-500 font-medium mt-2">Rate your itinerary and share what we should improve.</p>
 
         {!isFeedbackEnabled && (
           <p className="mt-4 text-sm font-semibold text-slate-500">
-            Feedback is currently unavailable. Configure `VITE_FEEDBACK_WEBHOOK_URL` to enable it.
+            Feedback is currently unavailable. Configure Google Form env values to enable it.
           </p>
         )}
 
-        {selectedFeedback === 'thumbs_down' && feedbackState !== 'submitted' && (
-          <div className="mt-5 space-y-4">
-            <p className="text-sm font-semibold text-slate-600">What can be improved?</p>
-            <div className="flex flex-wrap gap-3">
-              {[
-                { key: 'too_expensive', label: 'Too expensive' },
-                { key: 'unrealistic_plan', label: 'Unrealistic plan' },
-                { key: 'poor_stay_options', label: 'Poor stay options' },
-                { key: 'not_my_style', label: 'Not my style' },
-                { key: 'other', label: 'Other' },
-              ].map((reason) => (
-                <button
-                  key={reason.key}
-                  type="button"
-                  onClick={() => setSelectedReason(reason.key as FeedbackReason)}
-                  className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${
-                    selectedReason === reason.key
-                      ? 'border-rose-400 bg-rose-50 text-rose-700'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                  }`}
-                >
-                  {reason.label}
-                </button>
-              ))}
+        {feedbackState !== 'submitted' && (
+          <div className="mt-6 space-y-5">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              {[1, 2, 3, 4, 5].map((value) => {
+                const isActive = (hoverRating || rating) >= value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onMouseEnter={() => setHoverRating(value)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    onClick={() => {
+                      setRating(value);
+                      if (feedbackState === 'error') setFeedbackState('idle');
+                    }}
+                    disabled={!isFeedbackEnabled || feedbackState === 'submitting'}
+                    className="p-1 transition-transform hover:scale-110 disabled:cursor-not-allowed"
+                    aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
+                  >
+                    <svg
+                      className={`w-8 h-8 ${isActive ? 'text-amber-400' : 'text-slate-300'}`}
+                      viewBox="0 0 24 24"
+                      fill={isActive ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.036 6.263a1 1 0 00.95.69h6.586c.969 0 1.371 1.24.588 1.81l-5.327 3.87a1 1 0 00-.364 1.118l2.036 6.263c.3.921-.755 1.688-1.538 1.118l-5.327-3.87a1 1 0 00-1.176 0l-5.327 3.87c-.783.57-1.838-.197-1.539-1.118l2.036-6.263a1 1 0 00-.363-1.118l-5.327-3.87c-.784-.57-.38-1.81.587-1.81h6.587a1 1 0 00.95-.69l2.036-6.263z" />
+                    </svg>
+                  </button>
+                );
+              })}
             </div>
+
+            <textarea
+              rows={4}
+              placeholder="What did you like? What can be improved?"
+              value={feedbackText}
+              onChange={(e) => {
+                setFeedbackText(e.target.value);
+                if (feedbackState === 'error') setFeedbackState('idle');
+              }}
+              disabled={!isFeedbackEnabled || feedbackState === 'submitting'}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 resize-none"
+            />
+
             <button
               type="button"
-              onClick={handleSubmitNegativeFeedback}
-              disabled={feedbackState === 'submitting'}
-              className="px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:brightness-110 transition-all"
+              onClick={handleFeedbackSubmit}
+              disabled={!isFeedbackEnabled || feedbackState === 'submitting' || rating === 0}
+              className="px-6 py-3 rounded-2xl gradient-bg text-white font-bold hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit feedback
+              {feedbackState === 'submitting' ? 'Submitting...' : 'Submit Feedback'}
             </button>
           </div>
         )}

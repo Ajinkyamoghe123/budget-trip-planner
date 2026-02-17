@@ -7,7 +7,7 @@ This document explains how your app works today in plain language.
 Chalo helps a user:
 1. Enter trip preferences (cities, days, budget, style, etc.)
 2. Generate a full travel plan (stays, transport, day-by-day plan, costs, local tips)
-3. Give feedback (thumbs up/down) so you can improve quality
+3. Rate the generated plan (stars + comment) so you can improve quality
 
 ## 2) Big-picture system design
 
@@ -24,7 +24,8 @@ The system has 3 parts:
    - File: `server/index.mjs`
 
 3. Optional data sinks (for business analytics)
-   - Google Sheets webhook for feedback + event tracking
+   - Google Form for rating/comment feedback
+   - Google Sheets webhook for event tracking
    - Config via env vars
 
 ## 3) User journey flow
@@ -37,8 +38,8 @@ The system has 3 parts:
 5. Backend returns AI text + sources
 6. Frontend normalizes/validates output
 7. Itinerary renders in cards
-8. User can submit feedback (thumbs up/down + reason)
-9. Feedback/event data goes to webhook (usually Google Apps Script -> Google Sheet)
+8. User can submit feedback (1-5 stars + comment)
+9. Feedback goes to Google Form; analytics events can go to webhook
 
 ## 4) Current file map (what each file owns)
 
@@ -57,7 +58,7 @@ The system has 3 parts:
 - `components/PlanDisplay.tsx`
   - Final itinerary/details page
   - Day cards + expand/collapse + quick nav
-  - Feedback UI (thumbs + reason chips)
+  - Feedback UI (stars + comment box)
 
 ### Services
 - `services/geminiService.ts`
@@ -66,8 +67,8 @@ The system has 3 parts:
   - Adds fallback values if response is incomplete
 
 - `services/feedbackService.ts`
-  - Sends user feedback to webhook
-  - Uses `sendBeacon` first (fast, non-blocking)
+  - Sends user feedback to Google Form
+  - Uses `POST` with `mode: "no-cors"` and form entry IDs
 
 - `services/analyticsService.ts`
   - Sends product events to webhook
@@ -95,7 +96,9 @@ Use `.env` (example in `.env.example`):
 - `PORT` (optional, backend port)
 - `CORS_ORIGIN` (optional)
 - `VITE_BACKEND_URL` (frontend -> backend URL)
-- `VITE_FEEDBACK_WEBHOOK_URL` (optional)
+- `VITE_GOOGLE_FORM_ACTION_URL` (optional)
+- `VITE_GOOGLE_FORM_RATING_ENTRY_ID` (optional)
+- `VITE_GOOGLE_FORM_FEEDBACK_ENTRY_ID` (optional)
 - `VITE_ANALYTICS_WEBHOOK_URL` (optional)
 
 Important: Keep Gemini key server-side only for production.
@@ -112,10 +115,10 @@ Important: Keep Gemini key server-side only for production.
 ## 7) Business data currently collected
 
 ### Feedback events
-- `thumbs_up` or `thumbs_down`
-- Optional reason for negative response
+- rating (1 to 5)
+- feedback comment text
 - Timestamp
-- Destination + duration
+- Stored in your Google Form responses sheet
 
 ### Product analytics events
 - generation_started
@@ -168,9 +171,9 @@ This gives you a first-level KPI dashboard in Google Sheets.
 4. Check backend logs for exact error
 
 ### If feedback is not saved
-1. Verify `VITE_FEEDBACK_WEBHOOK_URL`
-2. Verify Apps Script is deployed as Web App
-3. Verify Google Sheet tab names match README
+1. Verify `VITE_GOOGLE_FORM_ACTION_URL`
+2. Verify rating entry ID env value
+3. Verify feedback entry ID env value
 
 ---
 

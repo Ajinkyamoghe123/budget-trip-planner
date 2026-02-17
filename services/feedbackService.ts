@@ -1,70 +1,37 @@
-export type FeedbackType = "thumbs_up" | "thumbs_down";
-export type FeedbackReason =
-  | "too_expensive"
-  | "unrealistic_plan"
-  | "poor_stay_options"
-  | "not_my_style"
-  | "other";
+const GOOGLE_FORM_ACTION_URL =
+  import.meta.env.VITE_GOOGLE_FORM_ACTION_URL?.trim() ||
+  "https://docs.google.com/forms/d/e/1FAIpQLSe-73KszVqhOUN9cC4AAL7jgz9xpBboyGJruKCWzIAmxOpxpg/formResponse";
 
-interface FeedbackMetadata {
-  destination?: string;
-  duration?: number;
-  travelers?: number;
-  reason?: FeedbackReason;
-}
+// Keep these configurable so you can switch forms without code changes.
+const GOOGLE_FORM_RATING_ENTRY_ID =
+  import.meta.env.VITE_GOOGLE_FORM_RATING_ENTRY_ID?.trim() || "1327086518";
+const GOOGLE_FORM_FEEDBACK_ENTRY_ID =
+  import.meta.env.VITE_GOOGLE_FORM_FEEDBACK_ENTRY_ID?.trim() || "897945779";
 
-interface FeedbackPayload extends FeedbackMetadata {
-  timestamp: string;
-  feedback: FeedbackType;
-  app: string;
-}
+export const isFeedbackEnabled = Boolean(
+  GOOGLE_FORM_ACTION_URL && GOOGLE_FORM_RATING_ENTRY_ID && GOOGLE_FORM_FEEDBACK_ENTRY_ID,
+);
 
-const FEEDBACK_WEBHOOK_URL = import.meta.env.VITE_FEEDBACK_WEBHOOK_URL?.trim();
-export const isFeedbackEnabled = Boolean(FEEDBACK_WEBHOOK_URL);
-
-const postFeedback = async (endpoint: string, payload: string): Promise<void> => {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 4000);
-
-  try {
-    await fetch(endpoint, {
-      method: "POST",
-      body: payload,
-      headers: {
-        "Content-Type": "text/plain;charset=UTF-8",
-      },
-      mode: "cors",
-      keepalive: true,
-      signal: controller.signal,
-    });
-  } finally {
-    window.clearTimeout(timeout);
-  }
-};
-
-export const submitFeedback = async (
-  feedback: FeedbackType,
-  metadata: FeedbackMetadata = {},
-): Promise<void> => {
-  if (!isFeedbackEnabled || !FEEDBACK_WEBHOOK_URL) {
-    throw new Error("Feedback webhook URL is not configured.");
+export const submitFeedback = async (rating: number, feedback: string): Promise<void> => {
+  if (!isFeedbackEnabled) {
+    throw new Error("Google Form feedback is not configured.");
   }
 
-  const payload: FeedbackPayload = {
-    app: "chalo",
-    feedback,
-    timestamp: new Date().toISOString(),
-    ...metadata,
-  };
-
-  const body = JSON.stringify(payload);
-
-  // sendBeacon keeps UI snappy and is resilient during navigation.
-  if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-    const beaconPayload = new Blob([body], { type: "text/plain;charset=UTF-8" });
-    const queued = navigator.sendBeacon(FEEDBACK_WEBHOOK_URL, beaconPayload);
-    if (queued) return;
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error("Rating must be between 1 and 5.");
   }
 
-  await postFeedback(FEEDBACK_WEBHOOK_URL, body);
+  const body = new URLSearchParams();
+  body.append(`entry.${GOOGLE_FORM_RATING_ENTRY_ID}`, String(rating));
+  body.append(`entry.${GOOGLE_FORM_FEEDBACK_ENTRY_ID}`, feedback.trim());
+
+  // no-cors is required for direct browser submissions to Google Forms.
+  await fetch(GOOGLE_FORM_ACTION_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
+    body: body.toString(),
+  });
 };
