@@ -1,7 +1,7 @@
 
 export enum TripType {
   SOLO = 'Solo',
-  BACHELOR = 'Bachelor',
+  // BACHELOR = 'Bachelor',
   COUPLE = 'Couple',
   FRIENDS = 'Friends',
   FAMILY = 'Family'
@@ -16,10 +16,28 @@ export enum Interest {
   CULTURE = 'Local Culture'
 }
 
+export enum TransportPreference {
+  ANY = 'Any',
+  TRAIN = 'Train',
+  BUS = 'Bus',
+  FLIGHT = 'Flight',
+  CAB = 'Cab/Car',
+}
+
+export enum TripPace {
+  RELAXED = 'Relaxed',
+  BALANCED = 'Balanced',
+  PACKED = 'Packed',
+}
+
 export interface UserInput {
   fromCity: string;
   toCity: string;
   tripType: TripType;
+  numberOfPeople: number;
+  travelMonth: string;
+  transportPreference: TransportPreference;
+  pace: TripPace;
   budget: number;
   duration: number;
   interests: Interest[];
