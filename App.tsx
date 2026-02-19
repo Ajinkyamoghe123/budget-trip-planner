@@ -6,10 +6,18 @@ import { trackEvent } from './services/analyticsService';
 import InputForm from './components/InputForm';
 import PlanDisplay from './components/PlanDisplay';
 
+const loadingMessages = [
+  'Good things take time. We are shaping your trip with care.',
+  'Checking practical routes and commute windows for your dates.',
+  'Balancing stay options with your budget and trip pace.',
+  'Curating day plans so each day feels realistic and fun.',
+];
+
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<TravelPlan | null>(null);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
   useEffect(() => {
     const savedPlan = localStorage.getItem('last_chalo_plan');
@@ -21,6 +29,19 @@ const App: React.FC = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 2200);
+
+    return () => window.clearInterval(intervalId);
+  }, [isLoading]);
 
   const handleFormSubmit = async (data: UserInput) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -93,7 +114,7 @@ const App: React.FC = () => {
       <main className={`${plan ? 'max-w-6xl' : 'max-w-5xl'} mx-auto pt-4 md:pt-8 pb-16 md:pb-20 relative z-10`}>
         {!plan && !isLoading && (
           <div className="space-y-14 md:space-y-20 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-            <header className="max-w-3xl mx-auto text-center space-y-6 md:space-y-8">
+            <header className="max-w-3xl mx-auto text-center space-y-6 md:space-y-8 animate-rise">
               <h1 className="text-5xl sm:text-6xl md:text-8xl font-black text-slate-900 tracking-tight leading-[0.98] md:leading-[0.9]">
                 Plan your next <br />
                 <span className="gradient-text">journey.</span>
@@ -103,9 +124,24 @@ const App: React.FC = () => {
               </p>
             </header>
 
-            <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+            <section className="relative max-w-4xl mx-auto h-44 md:h-56 rounded-[2.25rem] overflow-hidden border border-white/70 shadow-[0_20px_50px_rgba(99,102,241,0.12)] animate-rise" style={{ animationDelay: '120ms' }}>
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,#dbeafe_0%,#c7d2fe_45%,#eef2ff_100%)]"></div>
+              <div className="absolute top-5 right-10 w-10 h-10 rounded-full bg-white/80 shadow-[0_0_28px_rgba(255,255,255,0.9)]"></div>
+              <div className="absolute bottom-[-30%] left-[-8%] w-[70%] h-[70%] rounded-[100%] bg-indigo-300/45 landscape-drift"></div>
+              <div className="absolute bottom-[-35%] left-[20%] w-[80%] h-[75%] rounded-[100%] bg-indigo-400/35 landscape-drift-slow"></div>
+              <div className="absolute bottom-[-40%] left-[56%] w-[68%] h-[74%] rounded-[100%] bg-pink-300/35 landscape-drift"></div>
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/85 to-transparent"></div>
+              <div className="relative z-10 h-full flex items-end justify-between gap-4 p-6 md:p-8">
+                <p className="text-sm md:text-base font-bold text-indigo-900/80">AI-curated routes, budgets, and local gems.</p>
+                <p className="text-[11px] md:text-xs font-bold uppercase tracking-[0.2em] text-indigo-600/80">One flow • One approval</p>
+              </div>
+            </section>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pt-12 md:pt-16 max-w-4xl mx-auto border-t border-slate-100">
+            <div className="animate-rise" style={{ animationDelay: '220ms' }}>
+              <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pt-12 md:pt-16 max-w-4xl mx-auto border-t border-slate-100 animate-rise" style={{ animationDelay: '320ms' }}>
               {[
                 { n: 'Live', l: 'Search Grounded' },
                 { n: 'Local', l: 'Insider Insights' },
@@ -144,13 +180,13 @@ const App: React.FC = () => {
                 <div className="h-full w-1/3 gradient-bg rounded-full animate-route-progress"></div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {['Checking routes', 'Comparing stays', 'Refining day plans'].map((label) => (
-                  <div key={label} className="bg-slate-50 rounded-2xl border border-slate-100 p-4">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{label}</p>
-                    <div className="h-2 bg-slate-200/80 rounded-full animate-pulse"></div>
-                  </div>
-                ))}
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 px-5 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500 mb-2">
+                  Live Progress
+                </p>
+                <p className="text-sm md:text-base font-semibold text-slate-700">
+                  {loadingMessages[loadingMessageIndex]}
+                </p>
               </div>
             </div>
           </div>

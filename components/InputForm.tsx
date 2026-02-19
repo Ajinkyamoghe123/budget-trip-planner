@@ -1,11 +1,73 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UserInput, TripType, Interest, TransportPreference, TripPace } from '../types';
 
 interface InputFormProps {
   onSubmit: (data: UserInput) => void;
   isLoading: boolean;
 }
+
+const NON_INDIAN_LOCATION_TERMS = [
+  'pakistan',
+  'united states',
+  'usa',
+  'america',
+  'canada',
+  'mexico',
+  'united kingdom',
+  'uk',
+  'england',
+  'scotland',
+  'ireland',
+  'france',
+  'germany',
+  'italy',
+  'spain',
+  'portugal',
+  'australia',
+  'new zealand',
+  'china',
+  'japan',
+  'thailand',
+  'singapore',
+  'malaysia',
+  'indonesia',
+  'uae',
+  'dubai',
+  'abu dhabi',
+  'saudi arabia',
+  'qatar',
+  'turkey',
+  'russia',
+  'egypt',
+  'south africa',
+  'new york',
+  'london',
+  'paris',
+  'tokyo',
+  'sydney',
+  'toronto',
+  'vancouver',
+  'bali',
+  'bangkok',
+];
+
+const normalizeLocation = (value: string): string =>
+  value.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const hasExactTerm = (haystack: string, term: string): boolean => (
+  haystack === term ||
+  haystack.startsWith(`${term} `) ||
+  haystack.endsWith(` ${term}`) ||
+  haystack.includes(` ${term} `)
+);
+
+const isLikelyNonIndianLocation = (value: string): boolean => {
+  const normalized = normalizeLocation(value);
+  if (!normalized) return true;
+
+  return NON_INDIAN_LOCATION_TERMS.some((term) => hasExactTerm(normalized, term));
+};
 
 const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
   const [formData, setFormData] = useState<UserInput>({
@@ -20,6 +82,30 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
     duration: 3,
     interests: [],
   });
+  const [locationErrors, setLocationErrors] = useState<{ fromCity?: string; toCity?: string }>({});
+  const [openDropdown, setOpenDropdown] = useState<null | 'month' | 'transport'>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenDropdown(null);
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   const shouldShowTravelersInput =
     // formData.tripType === TripType.BACHELOR ||
@@ -40,12 +126,6 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
     [TripType.FAMILY]: 2200,
   };
 
-  const paceMultiplier: Record<TripPace, number> = {
-    [TripPace.RELAXED]: 0.95,
-    [TripPace.BALANCED]: 1,
-    [TripPace.PACKED]: 1.15,
-  };
-
   const transportBufferByPreference: Record<TransportPreference, number> = {
     [TransportPreference.ANY]: 1500,
     [TransportPreference.TRAIN]: 1200,
@@ -58,7 +138,7 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
     const travelers = getEffectiveTravelerCount(formData.tripType, formData.numberOfPeople);
     const baseDailyCost = baseDailyCostByTripType[formData.tripType];
     const travelBufferPerPerson = transportBufferByPreference[formData.transportPreference];
-    const tripPaceMultiplier = paceMultiplier[formData.pace];
+    const tripPaceMultiplier = 1;
     const minRecommendedBudget =
       travelers * ((formData.duration * baseDailyCost * tripPaceMultiplier) + travelBufferPerPerson);
 
@@ -82,9 +162,25 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fromCity || !formData.toCity) return;
+    const nextErrors: { fromCity?: string; toCity?: string } = {};
+
+    if (!formData.fromCity) {
+      nextErrors.fromCity = 'Please enter your starting city.';
+    } else if (isLikelyNonIndianLocation(formData.fromCity)) {
+      nextErrors.fromCity = 'India-only planner for now. Use an Indian city (e.g. Gwalior, Mumbai).';
+    }
+
+    if (!formData.toCity) {
+      nextErrors.toCity = 'Please enter your destination city.';
+    } else if (isLikelyNonIndianLocation(formData.toCity)) {
+      nextErrors.toCity = 'Destination must be in India for now (e.g. Manali, India).';
+    }
+
+    setLocationErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     const effectiveTravelerCount = getEffectiveTravelerCount(formData.tripType, formData.numberOfPeople);
-    onSubmit({ ...formData, numberOfPeople: effectiveTravelerCount });
+    onSubmit({ ...formData, numberOfPeople: effectiveTravelerCount, pace: TripPace.BALANCED });
   };
 
   const handleTripTypeChange = (tripType: TripType) => {
@@ -126,21 +222,45 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
           <label className="text-sm font-semibold text-slate-400 ml-1">Starting From</label>
           <input 
             type="text" 
-            placeholder="e.g. Mumbai"
-            className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
+            placeholder="e.g. Mumbai, India"
+            className={`w-full px-5 py-3.5 rounded-2xl bg-slate-50 border outline-none transition-all text-slate-700 font-medium ${
+              locationErrors.fromCity
+                ? 'border-rose-300 bg-rose-50/70 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400'
+                : 'border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30'
+            }`}
             value={formData.fromCity}
-            onChange={(e) => setFormData({...formData, fromCity: e.target.value})}
+            onChange={(e) => {
+              setFormData({...formData, fromCity: e.target.value});
+              if (locationErrors.fromCity) {
+                setLocationErrors((prev) => ({ ...prev, fromCity: undefined }));
+              }
+            }}
           />
+          {locationErrors.fromCity && (
+            <p className="text-xs font-semibold text-rose-600 ml-1">{locationErrors.fromCity}</p>
+          )}
         </div>
         <div className="space-y-2">
           <label className="text-sm font-semibold text-slate-400 ml-1">Heading To</label>
           <input 
             type="text" 
-            placeholder="e.g. Manali"
-            className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
+            placeholder="e.g. Manali, India"
+            className={`w-full px-5 py-3.5 rounded-2xl bg-slate-50 border outline-none transition-all text-slate-700 font-medium ${
+              locationErrors.toCity
+                ? 'border-rose-300 bg-rose-50/70 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400'
+                : 'border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30'
+            }`}
             value={formData.toCity}
-            onChange={(e) => setFormData({...formData, toCity: e.target.value})}
+            onChange={(e) => {
+              setFormData({...formData, toCity: e.target.value});
+              if (locationErrors.toCity) {
+                setLocationErrors((prev) => ({ ...prev, toCity: undefined }));
+              }
+            }}
           />
+          {locationErrors.toCity && (
+            <p className="text-xs font-semibold text-rose-600 ml-1">{locationErrors.toCity}</p>
+          )}
         </div>
       </div>
 
@@ -212,42 +332,94 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div ref={dropdownRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-400 ml-1">Travel Month</label>
-            <select
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
-              value={formData.travelMonth}
-              onChange={(e) => setFormData({ ...formData, travelMonth: e.target.value })}
-            >
-              {monthOptions.map((month) => (
-                <option key={month} value={month}>{month}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown((prev) => (prev === 'month' ? null : 'month'))}
+                className="w-full flex items-center justify-between px-5 pr-3 py-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] hover:border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-700 font-semibold"
+                aria-haspopup="listbox"
+                aria-expanded={openDropdown === 'month'}
+              >
+                <span>{formData.travelMonth}</span>
+                <span className={`w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm transition-transform ${openDropdown === 'month' ? 'rotate-180' : ''}`}>
+                  <svg className="w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                    <path d="M6 8l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </button>
+              <div
+                className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 rounded-2xl border border-slate-200 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.14)] overflow-hidden transition-all duration-200 ${
+                  openDropdown === 'month' ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'
+                }`}
+              >
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {monthOptions.map((month) => (
+                    <button
+                      key={month}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, travelMonth: month });
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        formData.travelMonth === month
+                          ? 'bg-indigo-50 text-indigo-700'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {month}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-400 ml-1">Transport</label>
-            <select
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
-              value={formData.transportPreference}
-              onChange={(e) => setFormData({ ...formData, transportPreference: e.target.value as TransportPreference })}
-            >
-              {Object.values(TransportPreference).map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-400 ml-1">Trip Pace</label>
-            <select
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
-              value={formData.pace}
-              onChange={(e) => setFormData({ ...formData, pace: e.target.value as TripPace })}
-            >
-              {Object.values(TripPace).map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown((prev) => (prev === 'transport' ? null : 'transport'))}
+                className="w-full flex items-center justify-between px-5 pr-3 py-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] hover:border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-700 font-semibold"
+                aria-haspopup="listbox"
+                aria-expanded={openDropdown === 'transport'}
+              >
+                <span>{formData.transportPreference}</span>
+                <span className={`w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm transition-transform ${openDropdown === 'transport' ? 'rotate-180' : ''}`}>
+                  <svg className="w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                    <path d="M6 8l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </button>
+              <div
+                className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-slate-200 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.14)] overflow-hidden transition-all duration-200 ${
+                  openDropdown === 'transport' ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'
+                }`}
+              >
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {Object.values(TransportPreference).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, transportPreference: option as TransportPreference });
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        formData.transportPreference === option
+                          ? 'bg-indigo-50 text-indigo-700'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -120,9 +120,9 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
           <div className="flex items-center gap-4">
             <button
               onClick={onReset}
-              className="w-12 h-12 bg-white text-slate-800 rounded-2xl flex items-center justify-center hover:shadow-lg transition-all border border-slate-100 group"
+              className="px-5 py-3 bg-white text-slate-800 rounded-2xl flex items-center justify-center hover:shadow-lg transition-all border border-slate-100 text-sm font-bold uppercase tracking-wider"
             >
-              <span className="text-2xl group-hover:scale-125 transition-transform">🔙</span>
+              Back
             </button>
             <div>
               <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">Your Safarnama</h1>
@@ -139,7 +139,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
       </div>
 
       {/* Hero: The Vibe Check */}
-      <section className="relative p-10 md:p-16 bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white group">
+      <section className="relative p-10 md:p-16 bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white group animate-rise">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/80 rounded-full -mr-32 -mt-32 blur-[100px] group-hover:scale-110 transition-transform duration-1000"></div>
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-pink-50/50 rounded-full -ml-20 -mb-20 blur-[80px]"></div>
 
@@ -161,7 +161,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
       </section>
 
       {/* The Core: Stays & Budget */}
-      <section className="space-y-8">
+      <section className="space-y-8 animate-rise" style={{ animationDelay: '120ms' }}>
         <section className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between mb-10">
             <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
@@ -195,9 +195,9 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
 
                 <p className="text-sm text-slate-600 font-medium leading-relaxed italic mb-8">"{option?.highlight || "Highly recommended"}"</p>
 
-                <div className="block w-full py-4 bg-slate-100 text-slate-700 rounded-2xl text-xs font-bold uppercase tracking-widest text-center border border-slate-200">
-                  Book In Chalo After Approval
-                </div>
+                <p className="text-xs font-semibold text-indigo-600">
+                  Included in final in-app booking after approval.
+                </p>
               </div>
             ))}
           </div>
@@ -249,25 +249,32 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
           </section>
         </div>
 
-        <div className="rounded-3xl border border-indigo-100 bg-indigo-50/60 p-6 text-center">
-          <p className="text-sm font-semibold text-indigo-700 mb-4">
-            Approve once and Chalo handles stay, transport, and itinerary bookings in-app.
-          </p>
-          <button
-            type="button"
-            disabled
-            className="w-full md:w-auto px-8 py-4 rounded-2xl gradient-bg text-white text-sm font-bold uppercase tracking-widest opacity-80 cursor-not-allowed"
-          >
-            Approve Full Trip And Book
-          </button>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-500 mt-3">
-            MVP Preview • One-click flow coming soon
-          </p>
+        <div className="relative overflow-hidden rounded-[2rem] border border-indigo-100/90 bg-gradient-to-br from-indigo-50 via-white to-pink-50 p-5 md:p-6 shadow-[0_16px_35px_rgba(99,102,241,0.12)] cta-float">
+          <div className="absolute -top-16 -right-14 w-44 h-44 rounded-full bg-pink-200/45 blur-3xl"></div>
+          <div className="absolute -bottom-20 -left-16 w-56 h-56 rounded-full bg-indigo-200/45 blur-3xl"></div>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-500 mb-2">
+                Trip Approval
+              </p>
+              <p className="text-sm md:text-base font-semibold text-slate-700">
+                Approve once and Chalo handles stay, transport, and itinerary bookings in-app.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled
+              className="relative overflow-hidden w-full md:w-auto px-7 py-3.5 rounded-xl gradient-bg text-white text-sm font-bold tracking-wide opacity-90 cursor-not-allowed cta-button-glow"
+            >
+              <span className="absolute inset-0 cta-shimmer pointer-events-none"></span>
+              <span className="relative">Approve Full Trip</span>
+            </button>
+          </div>
         </div>
       </section>
 
       {/* The Roadmap (Day by Day) */}
-      <section className="space-y-8">
+      <section className="space-y-8 animate-rise" style={{ animationDelay: '180ms' }}>
         <div className="text-center md:text-left px-4">
           <h3 className="text-3xl font-bold text-slate-900 tracking-tight">The Daily Roadmap</h3>
           <p className="text-slate-400 font-medium mt-2">A curated flow of experiences.</p>
@@ -288,7 +295,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
 
         <div className="space-y-8">
           {(plan?.itinerary || []).map((day, i) => (
-            <div id={`day-${day?.day || i + 1}`} key={i} className="group bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 md:p-10 hover:shadow-2xl transition-all">
+            <div id={`day-${day?.day || i + 1}`} key={i} className="group bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 md:p-10 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
               <div className="gradient-bg rounded-2xl px-6 py-4 text-white mb-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-lg md:text-xl font-black tracking-wide">Day {(day?.day || i + 1).toString().padStart(2, '0')}</span>
@@ -325,7 +332,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
       </section>
 
       {/* Local Insights */}
-      <section className="bg-indigo-600 p-10 md:p-14 rounded-[4rem] text-white shadow-[0_30px_60px_rgba(79,70,229,0.3)] relative overflow-hidden group">
+      <section className="bg-indigo-600 p-10 md:p-14 rounded-[4rem] text-white shadow-[0_30px_60px_rgba(79,70,229,0.3)] relative overflow-hidden group animate-rise" style={{ animationDelay: '220ms' }}>
         <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/10 rounded-full -mr-20 -mb-20 blur-3xl group-hover:scale-125 transition-transform duration-700"></div>
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 text-center md:text-left">
@@ -356,7 +363,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(plan?.localTips || []).map((tip, i) => (
-              <div key={i} className="bg-white/10 backdrop-blur-md p-8 rounded-[2rem] border border-white/10 hover:bg-white/20 transition-all">
+              <div key={i} className="bg-white/10 backdrop-blur-md p-8 rounded-[2rem] border border-white/10 hover:bg-white/20 hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center gap-4 mb-4">
                   <span className="px-3 py-1 bg-white text-indigo-600 text-[10px] font-bold rounded-lg uppercase tracking-wider">{tip?.category || "Tip"}</span>
                 </div>
