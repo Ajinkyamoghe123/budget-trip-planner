@@ -94,7 +94,7 @@ const App: React.FC = () => {
         {!plan && !isLoading && (
           <div className="space-y-14 md:space-y-20 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <header className="max-w-3xl mx-auto text-center space-y-6 md:space-y-8">
-              <h1 className="text-5xl sm:text-6xl md:text-8xl font-black text-slate-900 tracking-tighter leading-[0.98] md:leading-[0.9]">
+              <h1 className="text-5xl sm:text-6xl md:text-8xl font-black text-slate-900 tracking-tight leading-[0.98] md:leading-[0.9]">
                 Plan your next <br />
                 <span className="gradient-text">journey.</span>
               </h1>

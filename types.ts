@@ -38,8 +38,6 @@ export interface UserInput {
   travelMonth: string;
   transportPreference: TransportPreference;
   pace: TripPace;
-  mustDo: string;
-  mustAvoid: string;
   budget: number;
   duration: number;
   interests: Interest[];

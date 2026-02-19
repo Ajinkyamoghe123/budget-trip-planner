@@ -8,12 +8,6 @@ const getApiKey = (): string | undefined => {
   return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 };
 
-const normalizeListText = (value: unknown): string => {
-  if (!value || typeof value !== "string") return "None";
-  const cleaned = value.trim();
-  return cleaned.length > 0 ? cleaned : "None";
-};
-
 const buildPrompt = (input: any): string => {
   const budgetPerPerson = Math.floor((input.budget || 0) / Math.max(1, input.numberOfPeople || 1));
 
@@ -31,8 +25,6 @@ Duration: ${input.duration} days
 Interests: ${(input.interests || []).join(", ")}
 Preferred transport: ${input.transportPreference}
 Pace: ${input.pace}
-Must-do preferences: ${normalizeListText(input.mustDo)}
-Avoid preferences: ${normalizeListText(input.mustAvoid)}
 
 RESPONSE RULES:
 1. Keep recommendations realistic for time and budget.

@@ -16,8 +16,6 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
     travelMonth: 'Any month',
     transportPreference: TransportPreference.ANY,
     pace: TripPace.BALANCED,
-    mustDo: '',
-    mustAvoid: '',
     budget: 15000,
     duration: 3,
     interests: [],
@@ -250,29 +248,6 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-400 ml-1">Must-do (optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. sunset point, local market"
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
-              value={formData.mustDo}
-              onChange={(e) => setFormData({ ...formData, mustDo: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-400 ml-1">Avoid (optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. nightlife, long drives"
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/30 outline-none transition-all text-slate-700 font-medium"
-              value={formData.mustAvoid}
-              onChange={(e) => setFormData({ ...formData, mustAvoid: e.target.value })}
-            />
           </div>
         </div>
 

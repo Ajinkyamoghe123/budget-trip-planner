@@ -9,15 +9,48 @@ interface PlanDisplayProps {
   onReset: () => void;
 }
 
+const GI_TAG_MAP: Array<{ keywords: string[]; tags: string[] }> = [
+  { keywords: ["goa"], tags: ["Goa Feni"] },
+  { keywords: ["jaipur", "udaipur", "jodhpur", "rajasthan"], tags: ["Jaipur Blue Pottery", "Kota Doria"] },
+  { keywords: ["varanasi", "banaras"], tags: ["Banarasi Brocades and Sarees"] },
+  { keywords: ["lucknow"], tags: ["Lucknow Chikan Craft"] },
+  { keywords: ["agra"], tags: ["Agra Petha"] },
+  { keywords: ["manali", "kullu", "shimla", "himachal"], tags: ["Kullu Shawl", "Kangra Tea"] },
+  { keywords: ["srinagar", "kashmir"], tags: ["Kashmir Pashmina", "Kashmiri Saffron"] },
+  { keywords: ["darjeeling"], tags: ["Darjeeling Tea"] },
+  { keywords: ["assam", "guwahati"], tags: ["Assam Orthodox Tea"] },
+  { keywords: ["mysore", "mysuru"], tags: ["Mysore Silk"] },
+  { keywords: ["coorg", "kodagu"], tags: ["Coorg Arabica Coffee"] },
+  { keywords: ["hyderabad", "telangana"], tags: ["Pochampally Ikat"] },
+  { keywords: ["kanchipuram", "chennai", "tamil nadu"], tags: ["Kanchipuram Silk"] },
+  { keywords: ["kochi", "munnar", "kerala"], tags: ["Aranmula Kannadi", "Alleppey Coir"] },
+  { keywords: ["bhubaneswar", "puri", "odisha"], tags: ["Odisha Pattachitra"] },
+];
+
+const resolveGiTags = (destination: string): string[] => {
+  const normalized = destination.trim().toLowerCase();
+  if (!normalized) return [];
+
+  const tags = GI_TAG_MAP
+    .filter((entry) => entry.keywords.some((keyword) => normalized.includes(keyword)))
+    .flatMap((entry) => entry.tags);
+
+  return [...new Set(tags)];
+};
+
 const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
+  const getAllDayNumbers = (itinerary: TravelPlan["itinerary"] = []): number[] =>
+    itinerary.map((day, index) => day?.day || index + 1);
+  const giTags = resolveGiTags(plan?.accommodation?.area || "");
+
   const [feedbackState, setFeedbackState] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
-  const [expandedDays, setExpandedDays] = useState<number[]>([1]);
+  const [expandedDays, setExpandedDays] = useState<number[]>(() => getAllDayNumbers(plan?.itinerary || []));
 
   useEffect(() => {
-    setExpandedDays([1]);
+    setExpandedDays(getAllDayNumbers(plan?.itinerary || []));
   }, [plan]);
 
   useEffect(() => {
@@ -27,16 +60,6 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
       totalCost: plan?.costBreakdown?.total || 0,
     });
   }, [plan]);
-
-  const getSafeUrl = (url?: string): string | null => {
-    if (!url) return null;
-    const withProtocol = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-    try {
-      return new URL(withProtocol).href;
-    } catch {
-      return null;
-    }
-  };
 
   // const handleShare = async () => {
   //   const shareData = {
@@ -148,6 +171,9 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
               {plan?.accommodation?.area || "Recommended Stays"}
             </span>
           </div>
+          <p className="text-sm font-semibold text-slate-500 mb-8">
+            Included in your full-trip booking approval.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {(plan?.accommodation?.options || []).map((option, idx) => (
@@ -169,14 +195,13 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
 
                 <p className="text-sm text-slate-600 font-medium leading-relaxed italic mb-8">"{option?.highlight || "Highly recommended"}"</p>
 
-                {getSafeUrl(option?.bookingUrl) && (
-                  <a href={getSafeUrl(option?.bookingUrl) || "#"} target="_blank" rel="noopener noreferrer" className="block w-full py-4 bg-slate-900 text-white rounded-2xl text-xs font-bold uppercase tracking-widest text-center transition-all hover:gradient-bg shadow-xl hover:shadow-indigo-100 active:scale-95">
-                    Check Availability
-                  </a>
-                )}
+                <div className="block w-full py-4 bg-slate-100 text-slate-700 rounded-2xl text-xs font-bold uppercase tracking-widest text-center border border-slate-200">
+                  Book In Chalo After Approval
+                </div>
               </div>
             ))}
           </div>
+
         </section>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -210,6 +235,9 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
 
           <section className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Transport</h3>
+            <p className="text-sm font-semibold text-slate-500 mb-6">
+              Also included in full-trip booking approval.
+            </p>
             <div className="space-y-4">
               {(plan?.travelOptions || []).map((opt, i) => (
                 <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-transparent hover:border-indigo-100 transition-all">
@@ -219,6 +247,22 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
               ))}
             </div>
           </section>
+        </div>
+
+        <div className="rounded-3xl border border-indigo-100 bg-indigo-50/60 p-6 text-center">
+          <p className="text-sm font-semibold text-indigo-700 mb-4">
+            Approve once and Chalo handles stay, transport, and itinerary bookings in-app.
+          </p>
+          <button
+            type="button"
+            disabled
+            className="w-full md:w-auto px-8 py-4 rounded-2xl gradient-bg text-white text-sm font-bold uppercase tracking-widest opacity-80 cursor-not-allowed"
+          >
+            Approve Full Trip And Book
+          </button>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-500 mt-3">
+            MVP Preview • One-click flow coming soon
+          </p>
         </div>
       </section>
 
@@ -291,6 +335,24 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, onReset }) => {
             </div>
             <div className="px-6 py-2 bg-white/20 rounded-full text-xs font-bold tracking-widest uppercase">Trusted Tips</div>
           </div>
+
+          {giTags.length > 0 && (
+            <div className="mb-8 bg-white/10 backdrop-blur-md rounded-[2rem] border border-white/10 p-5">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white text-indigo-700 text-[11px] font-bold uppercase tracking-[0.2em] mb-3">
+                GI Tags
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {giTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1.5 bg-indigo-500/20 border border-white/30 text-white rounded-xl text-[11px] font-bold uppercase tracking-wide"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(plan?.localTips || []).map((tip, i) => (
